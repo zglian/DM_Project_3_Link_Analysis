@@ -121,7 +121,7 @@ def run_and_save(output_directory):
 
         if filename != "graph_6" and filename != "ibm-5000":
             start_time = time.time()
-            simrank = SimRank(g, iteration, damping_factor)
+            simrank = SimRank(g, iteration, decay_factor)
             simrank = np.array2string(simrank, precision = 3)
             end_time = time.time()
             save_results(output_directory, filename, "SimRank", simrank)
@@ -170,7 +170,7 @@ for fname, edges in edges_data:
     Graphs[fname] = G
     if fname.startswith('rev'):
         revGraphs[fname] = G 
-    print(fname, f': graph with {G.N} nodes and {len(G.edges)} edges')
+    #print(fname, f': graph with {G.N} nodes and {len(G.edges)} edges')
 
 if __name__ == '__main__':
     output_directory = "./results"
