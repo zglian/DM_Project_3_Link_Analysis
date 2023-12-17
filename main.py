@@ -6,6 +6,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from typing import Tuple
 from pprint import pprint
+import time 
 
 class Graph:
     def __init__(self, edges):
@@ -15,8 +16,7 @@ class Graph:
         nodes = set()
         for u, v in edges:
             nodes.add(u); nodes.add(v) 
-        nodes = sorted(nodes)
-        # print(nodes[:10])    
+        nodes = sorted(nodes)  
         nodesmap = {node:nodeidx for nodeidx, node in enumerate(nodes)}
         for u, v in edges:
             u, v = nodesmap[u], nodesmap[v]
@@ -27,9 +27,7 @@ class Graph:
 def PageRank(G:Graph, 
             max_iters:int, 
             damping_factor:float):
-
     N = G.N
-    PageRanksHistory = []
     d = damping_factor
     PageRanks = np.full(N, 1/N)   #將所有節點的權重初始化為1/N
     for iter in range(max_iters):
@@ -52,7 +50,6 @@ def HITS(G:Graph,
         for n in range(G.N):
             new_auths[n] = hubs[G.in_neighbors[n]].sum()
             new_hubs[n] = auths[G.out_neighbors[n]].sum()
-        # if norm == 'L1':
         auths = new_auths / np.sum(new_auths)
         hubs = new_hubs / np.sum(new_hubs)
     return auths, hubs 
@@ -60,7 +57,6 @@ def HITS(G:Graph,
 def SimRank(G: Graph, 
             max_iters:int, 
             decay_factor:float):
-    # SimRank_sum = the sum of SimRank value of all in-neighbor pairs (SimRank value is from the previous iteration)
     C = decay_factor 
     def update_simrank(a:int, b:int, simRank: np.array):
         if a == b: 
@@ -74,7 +70,6 @@ def SimRank(G: Graph,
         for i in a_in_neighbors:
             for j in b_in_neighbors:
                 temp += simRank[i, j]
-        # scaling the simRank 
         return C * temp / (a_in_size * b_in_size) 
                         
     simRank = np.zeros((G.N, G.N))
@@ -86,6 +81,54 @@ def SimRank(G: Graph,
         simRank = newSimRank.copy() 
     return simRank    
 
+def save_results(directory, filename, algorithm_name, data):
+    result_filename = f"{filename}_{algorithm_name}.txt"
+    result_path = os.path.join(directory, filename, result_filename)
+    os.makedirs(os.path.join(directory, filename), exist_ok=True)
+    with open(result_path, "w") as f:
+        f.write(data)
+
+def save_execution_time(time_data, output_directory):
+    time_file_path = os.path.join(output_directory, "time.txt")
+    with open(time_file_path, "w") as f:
+        for graph_name, algorithm_name, execution_time in time_data:
+            f.write(f"{graph_name} - {algorithm_name}: {execution_time:.5f} seconds\n")
+
+def run_and_save(output_directory):
+    time_data = []
+    for filename, g in Graphs.items():
+        print("=====" + filename + "=====")
+
+        start_time = time.time()
+        pagerank = PageRank(g, iteration, damping_factor)
+        pagerank = np.array2string(pagerank, precision = 3)
+        end_time = time.time()
+        save_results(output_directory, filename, "PageRank", pagerank)
+        print("Pagerank:\n" + pagerank)
+        time_data.append((filename, "PageRank", end_time - start_time))
+
+
+        start_time = time.time()
+        authority, hub = HITS(g, iteration)
+        authority = np.array2string(authority, precision = 3)
+        end_time = time.time()
+        hub = np.array2string(hub, precision = 3)
+        save_results(output_directory, filename, "HITS_authority", authority)
+        save_results(output_directory, filename, "HITS_hub", hub)
+        print("\nAuthority:\n" + authority)
+        print("\nHub:\n" + hub)
+        time_data.append((filename, "HITS", end_time - start_time))
+
+        if filename != "graph_6" and filename != "ibm-5000":
+            start_time = time.time()
+            simrank = SimRank(g, iteration, damping_factor)
+            simrank = np.array2string(simrank, precision = 3)
+            end_time = time.time()
+            save_results(output_directory, filename, "SimRank", simrank)
+            print("\nSimRank:\n" + simrank)
+            time_data.append((filename, "SimRank", end_time - start_time))
+    save_execution_time(time_data, output_directory)
+
 
 #input
 filedir ='./dataset/'
@@ -94,7 +137,7 @@ edges_data = {}
 for filename in os.listdir(filedir):
     edges = [] 
     filepath = os.path.join(filedir, filename) 
-    print(f'reading {filepath}...')
+    #print(f'reading {filepath}...')
 
     filepreff= filename.split('.')[0]
     if filename.startswith('graph') or filename.startswith('rev_graph'):
@@ -120,7 +163,6 @@ damping_factor = 0.1
 decay_factor = 0.7
 iteration = 30
 
-
 Graphs = {}
 revGraphs = {}
 for fname, edges in edges_data:
@@ -130,23 +172,7 @@ for fname, edges in edges_data:
         revGraphs[fname] = G 
     print(fname, f': graph with {G.N} nodes and {len(G.edges)} edges')
 
-
-for filename, g in Graphs.items():
-    print("=====" + filename + "=====")
-    pagerank = PageRank(g, iteration, damping_factor)
-    pagerank = np.array2string(pagerank, precision = 3)
-    print("Pagerank:\n" + pagerank)
-
-    authority, hub = HITS(g, iteration)
-    authority = np.array2string(authority, precision = 3)
-    hub = np.array2string(hub, precision = 3)
-    print("\nAuthority:\n" + authority)
-    print("\nHub:\n" + hub)
-
-    if filename != "graph_6" and filename != "ibm-5000":
-        simrank = SimRank(g, iteration, damping_factor)
-        simrank = np.array2string(simrank, precision = 3)
-        print("\nSimrank:\n" + simrank)
-
-    
+if __name__ == '__main__':
+    output_directory = "./results"
+    run_and_save(output_directory)
     
